@@ -1,44 +1,46 @@
 <html>
-	<head>
-		<!-- Include jQuery from a reliable source -->
-        	<script src="nui://game/ui/jquery.js" type="text/javascript"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.min.js" type="text/javascript"></script>
-		<script>
-			var audioPlayers = {};
+<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.min.js" type="text/javascript"></script>
+	<script>
+		var audioPlayers = {};
 
-			// Listen for NUI Messages.
-			window.addEventListener('message', function (event) {
-				// Check for playSound transaction
-				if (event.data.transactionType === "playSound") {
-					// Sanitize transactionFile before using it to prevent security vulnerabilities.
-					var transactionFile = event.data.transactionFile.replace(/[^a-z0-9]/gi, '');
+		function playSound(event) {
+			if (!event.data.transactionType || event.data.transactionType !== 'playSound') {
+				return;
+			}
 
-					// Check if the transactionFile exists before playing the audio
-					if (transactionFile) {
-						var audioPlayer = new Howl({
-							src: [`./sounds/${transactionFile}.ogg`],
-							onend: function () {
-								// Clean up resources when audio finishes playing.
-								if (audioPlayers[transactionFile]) {
-									audioPlayers[transactionFile].unload();
-									delete audioPlayers[transactionFile];
-								}
-							},
-							onloaderror: function () {
-								console.error(`Error loading audio: ${transactionFile}.ogg`);
-							}
-						});
+			var transactionFile = event.data.transactionFile.replace(/[^a-zA-Z0-9-_]/g, '');;
 
-						audioPlayer.volume(event.data.transactionVolume || 1.0);
-						audioPlayer.play();
+			if (!transactionFile) {
+				console.error('Invalid transactionFile provided:', event.data.transactionFile);
+				return;
+			}
 
-						// Store the audio player with a unique key (transactionFile).
-						audioPlayers[transactionFile] = audioPlayer;
-					} else {
-						console.error("Invalid transactionFile provided:", event.data.transactionFile);
-					}
+			// If the same audio track is already playing, stop it and unload the previous instance to prevent overlapping sounds.
+			if (audioPlayers[transactionFile]) {
+				audioPlayers[transactionFile].stop();
+				audioPlayers[transactionFile].unload();
+			}
+
+			var audioPlayer = new Howl({
+				src: [`./sounds/${transactionFile}.ogg`],
+				onend: function () {
+					// Clean up resources when audio finishes playing.
+					audioPlayer.unload();
+					delete audioPlayers[transactionFile];
+				},
+				onloaderror: function () {
+					console.error(`Error loading audio: ${transactionFile}.ogg`);
 				}
 			});
-		</script>
-	</head>
+
+			audioPlayer.volume(typeof event.data.transactionVolume === 'number' ? event.data.transactionVolume : 1.0);
+			audioPlayer.play();
+
+			audioPlayers[transactionFile] = audioPlayer;
+		}
+
+		window.addEventListener('message', playSound);
+	</script>
+</head>
 </html>
