@@ -1,26 +1,22 @@
 local standardVolumeOutput = 0.3;
-local hasPlayerLoaded = false
+local hasPlayerLoaded = LocalPlayer.state.isLoggedIn
 
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    hasPlayerLoaded = true
-end)
-
-RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
-    hasPlayerLoaded = false
+AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
+    hasPlayerLoaded = value
 end)
 
 RegisterNetEvent('InteractSound_CL:PlayOnOne', function(soundFile, soundVolume)
-    if hasPlayerLoaded then
+    if hasPlayerLoaded and soundFile then
         SendNUIMessage({
             transactionType = 'playSound',
-            transactionFile  = soundFile,
-            transactionVolume = soundVolume
+            transactionFile = soundFile,
+            transactionVolume = soundVolume or 1.0
         })
     end
 end)
 
 RegisterNetEvent('InteractSound_CL:PlayOnAll', function(soundFile, soundVolume)
-    if hasPlayerLoaded then
+    if hasPlayerLoaded and soundFile then
         SendNUIMessage({
             transactionType = 'playSound',
             transactionFile = soundFile,
@@ -30,14 +26,14 @@ RegisterNetEvent('InteractSound_CL:PlayOnAll', function(soundFile, soundVolume)
 end)
 
 RegisterNetEvent('InteractSound_CL:PlayWithinDistance', function(otherPlayerCoords, maxDistance, soundFile, soundVolume)
-	if hasPlayerLoaded then
+	if hasPlayerLoaded and soundFile then
 		local myCoords = GetEntityCoords(PlayerPedId())
 		local distance = #(myCoords - otherPlayerCoords)
 
 		if distance < maxDistance then
 			SendNUIMessage({
 				transactionType = 'playSound',
-				transactionFile  = soundFile,
+				transactionFile = soundFile,
 				transactionVolume = soundVolume or standardVolumeOutput
 			})
 		end

@@ -1,25 +1,44 @@
 <html>
-    <head>
-        <!-- Need to include jQuery! -->
-        <script src="nui://game/ui/jquery.js" type="text/javascript"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.min.js" type="text/javascript"></script>
-        <script>
-            var audioPlayer = null;
-            // Listen for NUI Messages.
-            window.addEventListener('message', function(event) {
-                // Check for playSound transaction
-                if (event.data.transactionType == "playSound") {
-				
-                  if (audioPlayer != null) {
-                    audioPlayer.pause();
-                  }
+	<head>
+		<!-- Include jQuery from a reliable source -->
+        	<script src="nui://game/ui/jquery.js" type="text/javascript"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.min.js" type="text/javascript"></script>
+		<script>
+			var audioPlayers = {};
 
-                  audioPlayer = new Howl({src: ["./sounds/" + event.data.transactionFile + ".ogg"]});
-                  audioPlayer.volume(event.data.transactionVolume);
-                  audioPlayer.play();
+			// Listen for NUI Messages.
+			window.addEventListener('message', function (event) {
+				// Check for playSound transaction
+				if (event.data.transactionType === "playSound") {
+					// Sanitize transactionFile before using it to prevent security vulnerabilities.
+					var transactionFile = event.data.transactionFile.replace(/[^a-z0-9]/gi, '');
 
-                }
-            });
-        </script>
-    </head>
+					// Check if the transactionFile exists before playing the audio
+					if (transactionFile) {
+						var audioPlayer = new Howl({
+							src: [`./sounds/${transactionFile}.ogg`],
+							onend: function () {
+								// Clean up resources when audio finishes playing.
+								if (audioPlayers[transactionFile]) {
+									audioPlayers[transactionFile].unload();
+									delete audioPlayers[transactionFile];
+								}
+							},
+							onloaderror: function () {
+								console.error(`Error loading audio: ${transactionFile}.ogg`);
+							}
+						});
+
+						audioPlayer.volume(event.data.transactionVolume || 1.0);
+						audioPlayer.play();
+
+						// Store the audio player with a unique key (transactionFile).
+						audioPlayers[transactionFile] = audioPlayer;
+					} else {
+						console.error("Invalid transactionFile provided:", event.data.transactionFile);
+					}
+				}
+			});
+		</script>
+	</head>
 </html>
